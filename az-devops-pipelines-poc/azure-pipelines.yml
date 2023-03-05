@@ -1,0 +1,113 @@
+# Maven package Java project Web App to Linux on Azure
+# Build your Java project and deploy it to Azure as a Linux web app
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/java
+
+trigger: 'none'
+
+
+variables:
+
+  # Azure Resource Manager connection created during pipeline creation
+  azureSubscription: '03256176-3593-4a3c-b220-9c7b4415e41a'
+
+  # Web app name
+  devWebAppName: 'cmpa-development-demo'
+  prodWebAppName: 'cmpa-production-demo'
+
+  # Environment name
+  devEnvironmentName: 'development'
+  prodEnvironmentName: 'production'
+
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+
+stages:
+
+
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: MavenPackageAndPublishArtifacts
+    displayName: Maven Package and Publish Artifacts
+    pool:
+      vmImage: $(vmImageName)
+
+    steps:
+    
+    - task: SonarQubePrepare@5
+      inputs:
+        SonarQube: 'az-pipeline-sonarqube-svc'
+        scannerMode: 'Other'
+        extraProperties: |
+          # Additional properties that will be passed to the scanner, 
+          # Put one key=value per line, example:
+          # sonar.exclusions=**/*.bin
+          sonar.projectName=code-analysis-from-az-pipelines
+          sonar.projectKey=cmpa
+
+    - task: Maven@3
+      displayName: 'Maven Package'
+      inputs:
+        mavenPomFile: 'pom.xml'
+        sonarQubeRunAnalysis: true
+        codeCoverageToolOption: JaCoCo
+
+    - task: SonarQubePublish@5
+      inputs:
+        pollingTimeoutSec: '300'
+        
+    - task: CopyFiles@2
+      displayName: 'Copy Files to artifact staging directory'
+      inputs:
+        SourceFolder: '$(System.DefaultWorkingDirectory)'
+        Contents: '**/target/*.?(war|jar)'
+        TargetFolder: $(Build.ArtifactStagingDirectory)
+
+    - upload: $(Build.ArtifactStagingDirectory)
+      artifact: drop
+
+- stage: DeploytoDev
+  displayName: Deploy to Development
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: DeployLinuxWebApp
+    displayName: Deploy Linux Web App to Development
+    environment: $(devEnvironmentName)
+    pool:
+      vmImage: $(vmImageName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebApp@1
+            displayName: 'Azure Web App Deploy'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appType: webAppLinux
+              appName: $(devWebAppName)
+              package: '$(Pipeline.Workspace)/drop/**/target/*.?(war|jar)'
+
+
+- stage: Deploy2Prod
+  displayName: Deploy to Production
+  dependsOn: DeploytoDev
+  condition: succeeded()
+  jobs:
+  - deployment: DeployLinuxWebApp
+    displayName: Deploy Linux Web App to Procution
+    environment: $(prodEnvironmentName)
+    pool:
+      vmImage: $(vmImageName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebApp@1
+            displayName: 'Azure Web App Deploy'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appType: webAppLinux
+              appName: $(prodWebAppName)
+              package: '$(Pipeline.Workspace)/drop/**/target/*.?(war|jar)'

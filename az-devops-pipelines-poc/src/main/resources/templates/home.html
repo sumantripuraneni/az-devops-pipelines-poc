@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="ISO-8859-1">
+  <title>Employee</title>
+  <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+        integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+        crossorigin="anonymous">
+</head>
+<body>
+<div class="container my-2" align="center">
+  <p>Welcome to <span th:text="${appName}">Our App</span></p>
+  <h3>Option List</h3>
+  <br />
+  <table style="width:80%" border="1"
+         class = "table table-striped table-responsive-md">
+    <thead>
+    <tr>
+      <th>Id</th>
+      <th>Code</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="example:${allexmplist}">
+      <td th:text="${example.id}"></td>
+      <td th:text="${example.cd}"></td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

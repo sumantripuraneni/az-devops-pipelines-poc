@@ -1,0 +1,82 @@
+# Starter pipeline
+
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger: 'none'
+
+variables:
+
+  # Azure Resource Manager connection created during pipeline creation
+  azureSubscription: '03256176-3593-4a3c-b220-9c7b4415e41a'
+
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+
+stages:
+
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: MavenPackageAndPublishArtifacts
+    displayName: Maven Package and Publish Artifacts
+    pool:
+      vmImage: $(vmImageName)
+
+    steps:
+    
+#     - task: SonarQubePrepare@5
+#       inputs:
+#         SonarQube: 'az-pipeline-sonarqube-svc'
+#         scannerMode: 'Other'
+#         extraProperties: |
+#           # Additional properties that will be passed to the scanner, 
+#           # Put one key=value per line, example:
+#           # sonar.exclusions=**/*.bin
+#           sonar.projectName=code-analysis-from-az-pipelines
+#           sonar.projectKey=cmpa
+
+#     - task: Maven@3
+#       displayName: 'Maven Package'
+#       inputs:
+#         mavenPomFile: 'pom.xml'
+#         sonarQubeRunAnalysis: true
+#         codeCoverageToolOption: JaCoCo
+
+#     - task: SonarQubePublish@5
+#       inputs:
+#         pollingTimeoutSec: '300'
+        
+#     - task: CopyFiles@2
+#       displayName: 'Copy Files to artifact staging directory'
+#       inputs:
+#         SourceFolder: '$(System.DefaultWorkingDirectory)'
+#         Contents: '**/target/*.?(war|jar)'
+#         TargetFolder: $(Build.ArtifactStagingDirectory)
+
+#     - upload: $(Build.ArtifactStagingDirectory)
+#       artifact: drop
+
+#     - bash: ls -lart $(Build.ArtifactStagingDirectory)/target
+    
+#     - task: S3Upload@1
+#       inputs:
+#         awsCredentials: 'cmpa-aws-demo'
+#         regionName: 'ca-central-1'
+#         bucketName: 'cmpa-aws-demo'
+#         sourceFolder: '$(Build.ArtifactStagingDirectory)/target'
+#         globExpressions: '*.jar'
+#         targetFolder: 'demo'
+      
+    - task: BeanstalkDeployApplication@1
+      inputs:
+        awsCredentials: 'cmpa-aws-demo'
+        regionName: 'ca-central-1'
+        applicationName: 'cmpa-aws-demo'
+        environmentName: 'Cmpaawsdemo-env'
+        applicationType: 's3'
+        deploymentBundleBucket: 'cmpa-aws-demo'
+        deploymentBundleKey: 'demo/demo-0.0.1-SNAPSHOT.jar'
+        logRequest: true
+        logResponse: true
